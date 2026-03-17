@@ -1,0 +1,331 @@
+import { useState, useEffect } from "react";
+
+const API = "http://localhost:3001/api";
+const ADMIN_PASSWORD = "kolspark2024";
+const ALL_TAGS = ["爆款", "高佣", "今日上新"];
+const ALL_CATS = ["S级爆品", "美妆", "家居", "食品"];
+const EMPTY_FORM = { name: "", price: "", commission: "", commRate: "", image: "", tags: [], categories: [], weight: "10", sampleLink: "" };
+
+function UploadBtn({ label, onUploaded, preview }) {
+  const [loading, setLoading] = useState(false);
+  const upload = async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    setLoading(true);
+    const fd = new FormData(); fd.append("file", file);
+    const res = await fetch(`${API}/upload`, { method: "POST", body: fd }).then(r => r.json());
+    onUploaded(res.url); setLoading(false);
+  };
+  return (
+    <label style={{ display: "block", cursor: "pointer" }}>
+      <div style={{ border: "2px dashed #333", borderRadius: 10, padding: "14px 0", textAlign: "center", fontSize: 13, color: "#ffffff55", background: "#0d0d0d" }}>
+        {loading ? "上传中…" : preview ? "🔄 重新上传" : `📁 ${label}`}
+      </div>
+      <input type="file" accept="image/*" onChange={upload} style={{ display: "none" }} />
+    </label>
+  );
+}
+
+// 权重内联编辑单元格
+function WeightCell({ product, onSaved }) {
+  const [val, setVal] = useState(String(product.weight || 10));
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    const w = parseFloat(val) || 10;
+    if (w === (product.weight || 10)) return;
+    setSaving(true);
+    await fetch(`${API}/products/${product.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...product, weight: w })
+    });
+    setSaving(false);
+    onSaved();
+  };
+
+  return (
+    <input
+      type="number"
+      value={val}
+      onChange={e => setVal(e.target.value)}
+      onBlur={save}
+      onKeyDown={e => e.key === "Enter" && e.target.blur()}
+      style={{
+        width: 60, padding: "5px 8px", borderRadius: 6,
+        border: "1px solid #333", background: saving ? "#0a2a0a" : "#1a1a1a",
+        color: saving ? "#25F4EE" : "#fff", fontSize: 13, fontWeight: 700,
+        outline: "none", textAlign: "center"
+      }}
+    />
+  );
+}
+
+export default function Admin() {
+  const [authed, setAuthed] = useState(false);
+  const [pw, setPw] = useState("");
+  const [products, setProducts] = useState([]);
+  const [banner, setBanner] = useState("");
+  const [logo, setLogo] = useState("");
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [editingId, setEditingId] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [tab, setTab] = useState("products");
+  const [filterCat, setFilterCat] = useState("全部");
+  const [filterTag, setFilterTag] = useState("全部");
+
+  const notify = (m) => { setMsg(m); setTimeout(() => setMsg(""), 2500); };
+
+  const load = () => fetch(`${API}/products`).then(r => r.json()).then(d => {
+    setProducts((d.products || []).sort((a, b) => (b.weight || 0) - (a.weight || 0)));
+    setBanner(d.banner || "");
+    setLogo(d.logo || "");
+  });
+
+  useEffect(() => { if (authed) load(); }, [authed]);
+
+  const handleLogin = () => { if (pw === ADMIN_PASSWORD) setAuthed(true); else alert("密码错误"); };
+
+  const toggleTag = (t) => setForm(f => ({ ...f, tags: f.tags.includes(t) ? f.tags.filter(x => x !== t) : [...f.tags, t] }));
+  const toggleCat = (c) => setForm(f => ({ ...f, categories: f.categories.includes(c) ? f.categories.filter(x => x !== c) : [...f.categories, c] }));
+
+  // 佣金自动计算：售价 × 比例
+  const handlePriceOrRate = (field, value) => {
+    const updated = { ...form, [field]: value };
+    const price = parseFloat(field === "price" ? value : updated.price) || 0;
+    const rateStr = field === "commRate" ? value : updated.commRate;
+    const rate = parseFloat(rateStr) / 100 || 0;
+    if (price > 0 && rate > 0) {
+      updated.commission = (price * rate).toFixed(2);
+    }
+    setForm(updated);
+  };
+
+  const handleSave = async () => {
+    if (!form.name) return alert("请填写商品名称");
+    setSaving(true);
+    const payload = { ...form, price: parseFloat(form.price) || 0, commission: parseFloat(form.commission) || 0, weight: parseFloat(form.weight) || 10, category: form.categories[0] || "S级爆品" };
+    if (editingId) {
+      await fetch(`${API}/products/${editingId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      notify("✅ 商品已更新");
+    } else {
+      await fetch(`${API}/products`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      notify("✅ 商品已添加");
+    }
+    setForm(EMPTY_FORM); setEditingId(null); setShowForm(false); setSaving(false); load();
+  };
+
+  const handleEdit = (p) => {
+    setEditingId(p.id);
+    setForm({ ...EMPTY_FORM, ...p, price: String(p.price), commission: String(p.commission), weight: String(p.weight || 10), tags: p.tags || [], categories: p.categories || (p.category ? [p.category] : []) });
+    setShowForm(true); setTab("products");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("确认删除？")) return;
+    await fetch(`${API}/products/${id}`, { method: "DELETE" });
+    notify("🗑 已删除"); load();
+  };
+
+  const handleBannerSave = async () => {
+    await fetch(`${API}/banner`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ banner }) });
+    notify("✅ Banner 已保存");
+  };
+
+  const handleLogoSave = async () => {
+    await fetch(`${API}/logo`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ logo }) });
+    notify("✅ Logo 已保存");
+  };
+
+  const filtered = products
+    .filter(p => filterCat === "全部" || (p.categories || [p.category]).includes(filterCat))
+    .filter(p => filterTag === "全部" || (p.tags || []).includes(filterTag));
+
+  const inp = { background: "#1a1a1a", border: "1px solid #2a2a2a", borderRadius: 8, color: "#fff", padding: "9px 12px", fontSize: 13, width: "100%", boxSizing: "border-box", outline: "none" };
+  const lbl = { fontSize: 11, color: "#ffffff55", marginBottom: 5, display: "block", marginTop: 12 };
+
+  if (!authed) return (
+    <div style={{ background: "#000", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ background: "#111", borderRadius: 20, padding: 36, width: 320, border: "1px solid #222" }}>
+        <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 4, textAlign: "center" }}>
+          <span style={{ color: "#888" }}>Kol</span><span style={{ background: "linear-gradient(90deg,#e85a2a,#e03030)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>spark</span>
+        </div>
+        <div style={{ fontSize: 12, color: "#ffffff44", textAlign: "center", marginBottom: 28 }}>后台管理系统</div>
+        <label style={lbl}>管理员密码</label>
+        <input type="password" value={pw} onChange={e => setPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin()} placeholder="输入密码" style={{ ...inp, marginBottom: 16 }} />
+        <button onClick={handleLogin} style={{ width: "100%", padding: "12px 0", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 800, fontSize: 14, background: "linear-gradient(90deg,#FE2C55,#ff6b6b)", color: "#fff" }}>登录</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ background: "#0a0a0a", minHeight: "100vh", fontFamily: "'Inter',sans-serif", color: "#fff" }}>
+
+      {/* 顶部导航 */}
+      <div style={{ background: "#111", borderBottom: "1px solid #222", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 56, position: "sticky", top: 0, zIndex: 50 }}>
+        <div style={{ fontSize: 18, fontWeight: 900 }}>
+          <span style={{ color: "#888" }}>Kol</span><span style={{ background: "linear-gradient(90deg,#e85a2a,#e03030)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>spark</span>
+          <span style={{ fontSize: 12, color: "#ffffff33", marginLeft: 10, fontWeight: 400 }}>后台管理</span>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <a href="/" target="_blank" style={{ background: "#1a1a1a", border: "1px solid #333", borderRadius: 8, color: "#fff", fontSize: 12, padding: "6px 14px", cursor: "pointer", textDecoration: "none" }}>👁 预览前台</a>
+          <button onClick={() => setAuthed(false)} style={{ background: "transparent", border: "1px solid #333", borderRadius: 8, color: "#ffffff66", fontSize: 12, padding: "6px 14px", cursor: "pointer" }}>退出</button>
+        </div>
+      </div>
+
+      {msg && <div style={{ position: "fixed", top: 70, left: "50%", transform: "translateX(-50%)", background: "#0a2a0a", border: "1px solid #25F4EE55", borderRadius: 10, padding: "10px 24px", fontSize: 13, color: "#25F4EE", zIndex: 999, whiteSpace: "nowrap" }}>{msg}</div>}
+
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: 24 }}>
+
+        {/* Tab */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+          {[["products", "🛍 商品管理"], ["banner", "🖼 Banner"], ["logo", "✨ Logo"]].map(([t, l]) => (
+            <button key={t} onClick={() => { setTab(t); setShowForm(false); }} style={{ padding: "9px 20px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, background: tab === t ? "#FE2C55" : "#1a1a1a", color: tab === t ? "#fff" : "#aaa" }}>{l}</button>
+          ))}
+        </div>
+
+        {/* ── 商品管理 ── */}
+        {tab === "products" && <>
+
+          {showForm && (
+            <div style={{ background: "#111", borderRadius: 16, padding: 24, border: "1px solid #222", marginBottom: 24 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                <div style={{ fontSize: 16, fontWeight: 800 }}>{editingId ? "✏️ 编辑商品" : "➕ 新增商品"}</div>
+                <button onClick={() => { setShowForm(false); setEditingId(null); setForm(EMPTY_FORM); }} style={{ background: "transparent", border: "1px solid #333", borderRadius: 8, color: "#aaa", fontSize: 12, padding: "5px 12px", cursor: "pointer" }}>取消</button>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+                {/* 左列 */}
+                <div>
+                  <label style={lbl}>商品名称 *</label>
+                  <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={inp} placeholder="商品名称" />
+
+                  <label style={lbl}>售价</label>
+                  <input type="number" value={form.price} onChange={e => handlePriceOrRate("price", e.target.value)} style={inp} placeholder="0.00" />
+
+                  <label style={lbl}>佣金比例（如 30 表示30%）</label>
+                  <input type="number" value={form.commRate.replace("%","")} onChange={e => handlePriceOrRate("commRate", e.target.value + "%")} style={inp} placeholder="30" />
+
+                  <label style={lbl}>佣金金额（自动计算）</label>
+                  <input type="number" value={form.commission} onChange={e => setForm(f => ({ ...f, commission: e.target.value }))} style={{ ...inp, color: "#25F4EE" }} placeholder="自动计算" />
+
+                  <label style={lbl}>申样链接</label>
+                  <input value={form.sampleLink} onChange={e => setForm(f => ({ ...f, sampleLink: e.target.value }))} style={inp} placeholder="https://..." />
+
+                  <label style={lbl}>权重（越大越靠前）</label>
+                  <input type="number" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} style={inp} />
+                </div>
+
+                {/* 中列 */}
+                <div>
+                  <label style={lbl}>分类（可多选）</label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+                    {ALL_CATS.map(c => (
+                      <button key={c} onClick={() => toggleCat(c)} style={{ padding: "6px 14px", borderRadius: 20, border: `1px solid ${form.categories.includes(c) ? "#FE2C55" : "#333"}`, cursor: "pointer", fontWeight: 700, fontSize: 12, background: form.categories.includes(c) ? "#FE2C55" : "transparent", color: form.categories.includes(c) ? "#fff" : "#aaa" }}>{c}</button>
+                    ))}
+                  </div>
+
+                  <label style={lbl}>标签（可多选）</label>
+                  <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                    {ALL_TAGS.map(t => {
+                      const tc = { "爆款": { bg: "#FE2C55", color: "#fff" }, "高佣": { bg: "#25F4EE", color: "#000" }, "今日上新": { bg: "#FFD700", color: "#000" } }[t];
+                      const on = form.tags.includes(t);
+                      return <button key={t} onClick={() => toggleTag(t)} style={{ padding: "6px 14px", borderRadius: 20, border: `1px solid ${on ? tc.bg : "#333"}`, cursor: "pointer", fontWeight: 700, fontSize: 12, background: on ? tc.bg : "transparent", color: on ? tc.color : "#aaa" }}>{t}</button>;
+                    })}
+                  </div>
+                </div>
+
+                {/* 右列 */}
+                <div>
+                  <label style={lbl}>商品图片</label>
+                  <UploadBtn label="上传商品图片" onUploaded={url => setForm(f => ({ ...f, image: url }))} preview={form.image} />
+                  {form.image && <img src={form.image} alt="" style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 10, marginTop: 10 }} />}
+                </div>
+              </div>
+
+              <div style={{ marginTop: 20, display: "flex", justifyContent: "flex-end" }}>
+                <button onClick={handleSave} disabled={saving} style={{ padding: "12px 32px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 800, fontSize: 14, background: "linear-gradient(90deg,#FE2C55,#ff6b6b)", color: "#fff" }}>
+                  {saving ? "保存中…" : editingId ? "💾 保存修改" : "✅ 添加商品"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 工具栏 */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              {["全部", ...ALL_CATS].map(c => (
+                <button key={c} onClick={() => setFilterCat(c)} style={{ padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12, background: filterCat === c ? "#FE2C55" : "#1a1a1a", color: filterCat === c ? "#fff" : "#aaa" }}>{c}</button>
+              ))}
+              <div style={{ width: 1, height: 20, background: "#333" }} />
+              {["全部", ...ALL_TAGS].map(t => (
+                <button key={t} onClick={() => setFilterTag(t)} style={{ padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12, background: filterTag === t ? "#25F4EE" : "#1a1a1a", color: filterTag === t ? "#000" : "#aaa" }}>{t}</button>
+              ))}
+            </div>
+            {!showForm && <button onClick={() => { setShowForm(true); setEditingId(null); setForm(EMPTY_FORM); }} style={{ padding: "9px 20px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 800, fontSize: 13, background: "linear-gradient(90deg,#FE2C55,#ff6b6b)", color: "#fff" }}>＋ 新增商品</button>}
+          </div>
+
+          {/* 列表 */}
+          <div style={{ background: "#111", borderRadius: 16, border: "1px solid #222", overflow: "hidden" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "60px 1fr 80px 80px 80px 120px 100px 70px 120px", gap: 0, background: "#1a1a1a", padding: "12px 16px", fontSize: 11, color: "#ffffff44", fontWeight: 700 }}>
+              <div>图片</div><div>商品名称</div><div>售价</div><div>佣金</div><div>佣金率</div><div>分类</div><div>标签</div><div title="直接修改权重，点击其他地方自动保存排序">权重 ↕</div><div>操作</div>
+            </div>
+
+            {filtered.length === 0
+              ? <div style={{ textAlign: "center", padding: 40, color: "#ffffff33" }}>暂无商品</div>
+              : filtered.map((p, i) => (
+                <div key={p.id} style={{ display: "grid", gridTemplateColumns: "60px 1fr 80px 80px 80px 120px 100px 70px 120px", gap: 0, padding: "12px 16px", alignItems: "center", borderTop: i === 0 ? "none" : "1px solid #1a1a1a", background: editingId === p.id ? "#1a0a0a" : "transparent" }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 8, overflow: "hidden", background: "#0d0d0d" }}>
+                    {p.image ? <img src={p.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#ffffff22", fontSize: 10 }}>无图</div>}
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, paddingLeft: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>¥{p.price}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#FE2C55" }}>¥{p.commission}</div>
+                  <div style={{ fontSize: 12, color: "#ffffff66" }}>{p.commRate}</div>
+                  <div style={{ fontSize: 11, color: "#ffffff55" }}>{(p.categories || [p.category]).join(", ")}</div>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                    {(p.tags || []).map(t => {
+                      const tc = { "爆款": { bg: "#FE2C55", color: "#fff" }, "高佣": { bg: "#25F4EE", color: "#000" }, "今日上新": { bg: "#FFD700", color: "#000" } }[t] || { bg: "#333", color: "#fff" };
+                      return <span key={t} style={{ fontSize: 9, fontWeight: 800, padding: "2px 6px", borderRadius: 4, background: tc.bg, color: tc.color }}>{t}</span>;
+                    })}
+                  </div>
+                  {/* 权重内联编辑 */}
+                  <WeightCell product={p} onSaved={load} />
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => handleEdit(p)} style={{ padding: "5px 12px", borderRadius: 6, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11, background: "#25F4EE", color: "#000" }}>编辑</button>
+                    <button onClick={() => handleDelete(p.id)} style={{ padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11, background: "#2a1a1a", color: "#FE2C55" }}>删除</button>
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+          <div style={{ fontSize: 12, color: "#ffffff33", marginTop: 10 }}>共 {filtered.length} 件 · 权重列可直接输入数字，失去焦点后自动保存排序</div>
+        </>}
+
+        {/* Banner */}
+        {tab === "banner" && (
+          <div style={{ background: "#111", borderRadius: 16, padding: 24, border: "1px solid #222", maxWidth: 500 }}>
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 20 }}>🖼 Banner 管理</div>
+            <UploadBtn label="上传 Banner 图片" onUploaded={url => setBanner(url)} preview={banner} />
+            {banner && <img src={banner} alt="" style={{ width: "100%", borderRadius: 12, marginTop: 14, objectFit: "cover", maxHeight: 180 }} />}
+            <button onClick={handleBannerSave} style={{ width: "100%", marginTop: 16, padding: "12px 0", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 800, fontSize: 14, background: "linear-gradient(90deg,#FE2C55,#ff6b6b)", color: "#fff" }}>💾 保存 Banner</button>
+          </div>
+        )}
+
+        {/* Logo */}
+        {tab === "logo" && (
+          <div style={{ background: "#111", borderRadius: 16, padding: 24, border: "1px solid #222", maxWidth: 500 }}>
+            <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 20 }}>✨ Logo 管理</div>
+            <UploadBtn label="上传 Logo（建议透明背景PNG）" onUploaded={url => setLogo(url)} preview={logo} />
+            {logo && <div style={{ marginTop: 14, background: "#000", borderRadius: 12, padding: 20, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <img src={logo} alt="Logo" style={{ maxHeight: 60, maxWidth: "100%", objectFit: "contain" }} />
+            </div>}
+            <button onClick={handleLogoSave} style={{ width: "100%", marginTop: 16, padding: "12px 0", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 800, fontSize: 14, background: "linear-gradient(90deg,#FE2C55,#ff6b6b)", color: "#fff" }}>💾 保存 Logo</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

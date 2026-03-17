@@ -1,0 +1,158 @@
+{
+  "banner": "https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=800",
+  "products": [
+    {
+      "id": "1",
+      "name": "兰芝唇膜滋润款",
+      "price": 89,
+      "commission": 26.7,
+      "commRate": "30%",
+      "img": "💄",
+      "image": "http://localhost:3001/uploads/1773661039596.png",
+      "tags": [
+        "高佣",
+        "今日上新"
+      ],
+      "weight": 10,
+      "category": "美妆",
+      "sampleLink": "https://tiktok.com/sample/laneige"
+    },
+    {
+      "id": "2",
+      "name": "玻尿酸精华液Pro",
+      "price": 159,
+      "commission": 44.7,
+      "commRate": "20%",
+      "img": "💧",
+      "image": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=400",
+      "tags": [
+        "Bán chạy",
+        "Hoa hồng cao"
+      ],
+      "weight": 100,
+      "category": "S级爆品",
+      "sampleLink": "https://tiktok.com/sample/hyaluronic",
+      "categories": [
+        "S级爆品",
+        "美妆",
+        "Làm đẹp"
+      ]
+    },
+    {
+      "id": "3",
+      "name": "飞利浦空气炸锅",
+      "price": 399,
+      "commission": 79.8,
+      "commRate": "20%",
+      "img": "🍳",
+      "image": "https://images.unsplash.com/photo-1648744543548-f6f13d3cf687?w=400",
+      "tags": [
+        "爆款"
+      ],
+      "weight": 10,
+      "category": "家居",
+      "sampleLink": "https://tiktok.com/sample/philips"
+    },
+    {
+      "id": "4",
+      "name": "防晒霜SPF50+",
+      "price": 79,
+      "commission": 19.8,
+      "commRate": "25%",
+      "img": "🧴",
+      "image": "https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=400",
+      "tags": [
+        "爆款",
+        "今日上新"
+      ],
+      "weight": 88,
+      "category": "美妆",
+      "sampleLink": "https://tiktok.com/sample/sunscreen",
+      "categories": [
+        "美妆"
+      ]
+    },
+    {
+      "id": "5",
+      "name": "胶原蛋白软糖",
+      "price": 99,
+      "commission": 29.7,
+      "commRate": "30%",
+      "img": "🍬",
+      "image": "https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=400",
+      "tags": [
+        "高佣",
+        "今日上新"
+      ],
+      "weight": 85,
+      "category": "食品",
+      "sampleLink": "https://tiktok.com/sample/collagen"
+    },
+    {
+      "id": "6",
+      "name": "无线蓝牙耳机",
+      "price": 199,
+      "commission": 39.8,
+      "commRate": "20%",
+      "img": "🎧",
+      "image": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400",
+      "tags": [
+        "今日上新"
+      ],
+      "weight": 80,
+      "category": "S级爆品",
+      "sampleLink": "https://tiktok.com/sample/earphone"
+    },
+    {
+      "id": "7",
+      "name": "乌龙奶茶礼盒",
+      "price": 59.9,
+      "commission": 16.8,
+      "commRate": "28%",
+      "img": "🧋",
+      "image": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400",
+      "tags": [
+        "今日上新",
+        "高佣"
+      ],
+      "weight": 78,
+      "category": "食品",
+      "sampleLink": "https://tiktok.com/sample/oolong"
+    },
+    {
+      "id": "8",
+      "name": "香氛蜡烛礼盒",
+      "price": 128,
+      "commission": 38.4,
+      "commRate": "30%",
+      "img": "🕯",
+      "image": "https://images.unsplash.com/photo-1602607144881-d2982e28cd6b?w=400",
+      "tags": [
+        "高佣"
+      ],
+      "weight": 70,
+      "category": "家居",
+      "sampleLink": "https://tiktok.com/sample/candle"
+    },
+    {
+      "name": "231",
+      "price": 1231,
+      "commission": 1231,
+      "commRate": "2131",
+      "img": "🛍",
+      "image": "",
+      "tags": [
+        "Bán chạy",
+        "Hoa hồng cao"
+      ],
+      "weight": 10,
+      "category": "S级爆品",
+      "sampleLink": "123",
+      "id": "1773661393835",
+      "categories": [
+        "S级爆品"
+      ]
+    }
+  ],
+  "logo": ""
+}
