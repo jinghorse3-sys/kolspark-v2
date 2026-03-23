@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-const API = "http://localhost:3001/api";
+const API = `http://${window.location.hostname}:3001/api`;
 const PAGE_SIZE = 8;
 
 const TAG_COLORS = {
@@ -44,21 +44,36 @@ const TikTokColorLogo = ({ size = 22 }) => (
 function SampleModal({ product, onClose }) {
   const [copiedTap, setCopiedTap] = useState(false);
   const tapLink = product.sampleLink || "";
-  const tiktokDeepLink = tapLink
-    ? `snssdk1233://aweme/detail/?link=${encodeURIComponent(tapLink)}`
-    : "snssdk1233://";
+  const tiktokDeepLink = "tiktok://app/open?path=/creator/affiliate/product/add";
 
   const handleCopyTap = () => {
-    if (tapLink) navigator.clipboard.writeText(tapLink).catch(() => {});
+    if (!tapLink) return;
+    // 兼容移动端的复制方式
+    try {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(tapLink);
+      } else {
+        const el = document.createElement("textarea");
+        el.value = tapLink;
+        el.style.position = "fixed";
+        el.style.opacity = "0";
+        document.body.appendChild(el);
+        el.focus(); el.select();
+        document.execCommand("copy");
+        document.body.removeChild(el);
+      }
+    } catch (e) {}
     setCopiedTap(true);
     setTimeout(() => setCopiedTap(false), 2000);
   };
 
   const handleOpenTikTok = () => {
-    // 尝试唤醒 TikTok App，失败则跳转网页
-    window.location.href = tiktokDeepLink;
+    window.location.href = "snssdk1233://addsample?url=" + encodeURIComponent(tapLink);
     setTimeout(() => {
-      window.open("https://www.tiktok.com", "_blank");
+      window.location.href = "tiktok://app/open?path=/creator/affiliate/product/add";
+      setTimeout(() => {
+        window.open("https://www.tiktok.com", "_blank");
+      }, 1500);
     }, 1500);
   };
 
@@ -105,15 +120,15 @@ function SampleModal({ product, onClose }) {
           </button>
         </div>
 
-        {/* 第二步：跳转 TikTok */}
+        {/* 第二步：直接打开 TAP 链接，浏览器自动唤醒 TikTok */}
         <div style={{ background: "#0d0d0d", borderRadius: 14, padding: 14, border: "1px solid #2a2a2a" }}>
           <div style={{ fontSize: 11, color: "#ffffff44", marginBottom: 8 }}>
             <span style={{ background: "#FE2C55", color: "#fff", borderRadius: 4, padding: "2px 7px", fontWeight: 800, marginRight: 6 }}>Bước 2</span>
-            Mở TikTok → Dán link → Đăng ký mẫu
+            Mở link → TikTok tự động mở trang đăng ký mẫu
           </div>
-          <button onClick={handleOpenTikTok} style={{ width: "100%", padding: "11px 0", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 800, fontSize: 13, background: "#000", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: "1px solid #ffffff22" }}>
-            <TikTokColorLogo size={18} />Mở TikTok ngay
-          </button>
+          <a href={tapLink || "https://www.tiktok.com"} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "11px 0", borderRadius: 10, border: "1px solid #ffffff22", cursor: "pointer", fontWeight: 800, fontSize: 13, background: "#000", color: "#fff", textDecoration: "none", boxSizing: "border-box" }}>
+            <TikTokColorLogo size={18} />Mở TikTok đăng ký mẫu
+          </a>
         </div>
 
         <div style={{ textAlign: "center", fontSize: 10, color: "#ffffff22", marginTop: 14 }}>Nhấn bên ngoài để đóng</div>
