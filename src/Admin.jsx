@@ -54,6 +54,7 @@ export default function Admin() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [tab, setTab] = useState("products");
+  const [listTab, setListTab] = useState("active"); // active | offline
   const [filterCat, setFilterCat] = useState("All");
   const [filterTag, setFilterTag] = useState("All");
 
@@ -100,10 +101,11 @@ export default function Admin() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this product?")) return;
-    await fetch(`${API}/products/${id}`, { method: "DELETE" });
-    notify("🗑 Deleted"); load();
+  const handleOffline = async (p) => {
+    const newStatus = p.status === "offline" ? "active" : "offline";
+    await fetch(`${API}/products/${p.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...p, status: newStatus }) });
+    notify(newStatus === "offline" ? "⏸ Product offline" : "✅ Product restored");
+    load();
   };
 
   const handleBannerSave = async () => {
@@ -116,7 +118,10 @@ export default function Admin() {
     notify("✅ Logo saved");
   };
 
-  const filtered = products
+  const activeProducts = products.filter(p => p.status !== "offline");
+  const offlineProducts = products.filter(p => p.status === "offline");
+
+  const currentList = (listTab === "active" ? activeProducts : offlineProducts)
     .filter(p => filterCat === "All" || (p.categories || [p.category]).includes(filterCat))
     .filter(p => filterTag === "All" || (p.tags || []).includes(filterTag));
 
@@ -154,9 +159,9 @@ export default function Admin() {
 
       {msg && <div style={{ position: "fixed", top: 70, left: "50%", transform: "translateX(-50%)", background: "#0a2a0a", border: "1px solid #25F4EE55", borderRadius: 10, padding: "10px 24px", fontSize: 13, color: "#25F4EE", zIndex: 999, whiteSpace: "nowrap" }}>{msg}</div>}
 
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: 24 }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: 24 }}>
 
-        {/* Tabs */}
+        {/* Main Tabs */}
         <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
           {[["products", "🛍 Products"], ["banner", "🖼 Banner"], ["logo", "✨ Logo"]].map(([t, l]) => (
             <button key={t} onClick={() => { setTab(t); setShowForm(false); }} style={{ padding: "9px 20px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, background: tab === t ? "#FE2C55" : "#1a1a1a", color: tab === t ? "#fff" : "#aaa" }}>{l}</button>
@@ -165,6 +170,8 @@ export default function Admin() {
 
         {/* Products tab */}
         {tab === "products" && <>
+
+          {/* 新增/编辑表单 */}
           {showForm && (
             <div style={{ background: "#111", borderRadius: 16, padding: 24, border: "1px solid #222", marginBottom: 24 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
@@ -195,11 +202,12 @@ export default function Admin() {
                   </div>
                   <label style={lbl}>Tags (multi-select)</label>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
-                    {ALL_TAGS.map(t => {
-                      const tc = { "Bán chạy": { bg: "#FE2C55", color: "#fff" }, "Hoa hồng cao": { bg: "#25F4EE", color: "#000" }, "Mới hôm nay": { bg: "#FFD700", color: "#000" } }[t];
+                    {ALL_TAGS.filter(t => t !== "Mới hôm nay").map(t => {
+                      const tc = { "Bán chạy": { bg: "#FE2C55", color: "#fff" }, "Hoa hồng cao": { bg: "#25F4EE", color: "#000" } }[t];
                       const on = form.tags.includes(t);
                       return <button key={t} onClick={() => toggleTag(t)} style={{ padding: "6px 14px", borderRadius: 20, border: `1px solid ${on ? tc.bg : "#333"}`, cursor: "pointer", fontWeight: 700, fontSize: 12, background: on ? tc.bg : "transparent", color: on ? tc.color : "#aaa" }}>{t}</button>;
                     })}
+                    <div style={{ fontSize: 11, color: "#ffffff33", alignSelf: "center" }}>* "Mới hôm nay" auto-assigned (within 7 days)</div>
                   </div>
                 </div>
                 <div>
@@ -216,29 +224,39 @@ export default function Admin() {
             </div>
           )}
 
-          {/* Toolbar */}
+          {/* 工具栏 */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               {["All", ...ALL_CATS].map(c => (
                 <button key={c} onClick={() => setFilterCat(c)} style={{ padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12, background: filterCat === c ? "#FE2C55" : "#1a1a1a", color: filterCat === c ? "#fff" : "#aaa" }}>{c}</button>
               ))}
               <div style={{ width: 1, height: 20, background: "#333" }} />
-              {["All", ...ALL_TAGS].map(t => (
+              {["All", "Bán chạy", "Hoa hồng cao"].map(t => (
                 <button key={t} onClick={() => setFilterTag(t)} style={{ padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12, background: filterTag === t ? "#25F4EE" : "#1a1a1a", color: filterTag === t ? "#000" : "#aaa" }}>{t}</button>
               ))}
             </div>
             {!showForm && <button onClick={() => { setShowForm(true); setEditingId(null); setForm(EMPTY_FORM); }} style={{ padding: "9px 20px", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 800, fontSize: 13, background: "linear-gradient(90deg,#FE2C55,#ff6b6b)", color: "#fff" }}>＋ Add Product</button>}
           </div>
 
-          {/* Table */}
+          {/* Active / Offline 子Tab */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+            <button onClick={() => setListTab("active")} style={{ padding: "7px 18px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, background: listTab === "active" ? "#25F4EE" : "#1a1a1a", color: listTab === "active" ? "#000" : "#aaa" }}>
+              Active ({activeProducts.length})
+            </button>
+            <button onClick={() => setListTab("offline")} style={{ padding: "7px 18px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13, background: listTab === "offline" ? "#FE2C55" : "#1a1a1a", color: listTab === "offline" ? "#fff" : "#aaa" }}>
+              Offline ({offlineProducts.length})
+            </button>
+          </div>
+
+          {/* 商品列表 */}
           <div style={{ background: "#111", borderRadius: 16, border: "1px solid #222", overflow: "hidden" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "60px 1fr 90px 90px 80px 120px 100px 70px 130px", background: "#1a1a1a", padding: "12px 16px", fontSize: 11, color: "#ffffff44", fontWeight: 700 }}>
-              <div>Image</div><div>Name</div><div>Price</div><div>Commission</div><div>Rate</div><div>Category</div><div>Tags</div><div title="Edit weight directly, auto-saves">Weight ↕</div><div>Actions</div>
+            <div style={{ display: "grid", gridTemplateColumns: "60px 1fr 90px 90px 80px 120px 100px 70px 140px", background: "#1a1a1a", padding: "12px 16px", fontSize: 11, color: "#ffffff44", fontWeight: 700 }}>
+              <div>Image</div><div>Name</div><div>Price</div><div>Commission</div><div>Rate</div><div>Category</div><div>Tags</div><div>Weight ↕</div><div>Actions</div>
             </div>
-            {filtered.length === 0
-              ? <div style={{ textAlign: "center", padding: 40, color: "#ffffff33" }}>No products found</div>
-              : filtered.map((p, i) => (
-                <div key={p.id} style={{ display: "grid", gridTemplateColumns: "60px 1fr 90px 90px 80px 120px 100px 70px 130px", padding: "12px 16px", alignItems: "center", borderTop: i === 0 ? "none" : "1px solid #1a1a1a", background: editingId === p.id ? "#1a0a0a" : "transparent" }}>
+            {currentList.length === 0
+              ? <div style={{ textAlign: "center", padding: 40, color: "#ffffff33" }}>No products</div>
+              : currentList.map((p, i) => (
+                <div key={p.id} style={{ display: "grid", gridTemplateColumns: "60px 1fr 90px 90px 80px 120px 100px 70px 140px", padding: "12px 16px", alignItems: "center", borderTop: i === 0 ? "none" : "1px solid #1a1a1a", background: editingId === p.id ? "#1a0a0a" : p.status === "offline" ? "#1a1a0a" : "transparent", opacity: p.status === "offline" ? 0.6 : 1 }}>
                   <div style={{ width: 44, height: 44, borderRadius: 8, overflow: "hidden", background: "#0d0d0d" }}>
                     {p.image ? <img src={p.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#ffffff22", fontSize: 10 }}>No img</div>}
                   </div>
@@ -255,17 +273,19 @@ export default function Admin() {
                   </div>
                   <WeightCell product={p} onSaved={load} />
                   <div style={{ display: "flex", gap: 6 }}>
-                    <button onClick={() => handleEdit(p)} style={{ padding: "5px 12px", borderRadius: 6, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11, background: "#25F4EE", color: "#000" }}>Edit</button>
-                    <button onClick={() => handleDelete(p.id)} style={{ padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11, background: "#2a1a1a", color: "#FE2C55" }}>Del</button>
+                    <button onClick={() => handleEdit(p)} style={{ padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11, background: "#25F4EE", color: "#000" }}>Edit</button>
+                    <button onClick={() => handleOffline(p)} style={{ padding: "5px 10px", borderRadius: 6, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 11, background: p.status === "offline" ? "#0a2a0a" : "#2a1a0a", color: p.status === "offline" ? "#25F4EE" : "#FFD700" }}>
+                      {p.status === "offline" ? "↑ On" : "↓ Off"}
+                    </button>
                   </div>
                 </div>
               ))
             }
           </div>
-          <div style={{ fontSize: 12, color: "#ffffff33", marginTop: 10 }}>{filtered.length} products · Edit weight inline, auto-saves on blur</div>
+          <div style={{ fontSize: 12, color: "#ffffff33", marginTop: 10 }}>{currentList.length} products · Weight editable inline · No delete — use Offline instead</div>
         </>}
 
-        {/* Banner tab */}
+        {/* Banner */}
         {tab === "banner" && (
           <div style={{ background: "#111", borderRadius: 16, padding: 24, border: "1px solid #222", maxWidth: 500 }}>
             <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 20 }}>🖼 Banner</div>
@@ -275,7 +295,7 @@ export default function Admin() {
           </div>
         )}
 
-        {/* Logo tab */}
+        {/* Logo */}
         {tab === "logo" && (
           <div style={{ background: "#111", borderRadius: 16, padding: 24, border: "1px solid #222", maxWidth: 500 }}>
             <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 20 }}>✨ Logo</div>

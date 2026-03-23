@@ -3,6 +3,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const sharp = require('sharp');
 
 const app = express();
 const DATA_FILE = path.join(__dirname, 'data/products.json');
@@ -12,17 +13,34 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(UPLOADS_DIR));
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
-  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
-});
-const upload = multer({ storage });
+// multer 先存到临时目录，再用 sharp 压缩
+const tmpStorage = multer.memoryStorage();
+const upload = multer({ storage: tmpStorage, limits: { fileSize: 20 * 1024 * 1024 } });
 
 function readData() { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); }
 function writeData(data) { fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2)); }
 
+// 上传并压缩图片
+app.post('/api/upload', upload.single('file'), async (req, res) => {
+  try {
+    const filename = `${Date.now()}.webp`;
+    const outPath = path.join(UPLOADS_DIR, filename);
+    await sharp(req.file.buffer)
+      .resize({ width: 800, height: 800, fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toFile(outPath);
+    res.json({ url: `http://localhost:3001/uploads/${filename}` });
+  } catch (e) {
+    console.error('Image compress error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // 获取所有数据
-app.get('/api/products', (req, res) => res.json(readData()));
+app.get('/api/products', (req, res) => {
+  try { res.json(readData()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // 更新 banner
 app.put('/api/banner', (req, res) => {
@@ -40,10 +58,10 @@ app.put('/api/logo', (req, res) => {
   res.json({ ok: true });
 });
 
-// 新增商品
+// 新增商品（自动加 createdAt）
 app.post('/api/products', (req, res) => {
   const data = readData();
-  const product = { ...req.body, id: Date.now().toString() };
+  const product = { ...req.body, id: Date.now().toString(), createdAt: new Date().toISOString(), status: 'active' };
   data.products.push(product);
   writeData(data);
   res.json(product);
@@ -59,17 +77,6 @@ app.put('/api/products/:id', (req, res) => {
   res.json(data.products[i]);
 });
 
-// 删除商品
-app.delete('/api/products/:id', (req, res) => {
-  const data = readData();
-  data.products = data.products.filter(p => p.id !== req.params.id);
-  writeData(data);
-  res.json({ ok: true });
-});
+// 不提供删除接口，只允许下架（status: offline）
 
-// 上传图片（商品图/banner/logo通用）
-app.post('/api/upload', upload.single('file'), (req, res) => {
-  res.json({ url: `http://localhost:3001/uploads/${req.file.filename}` });
-});
-
-app.listen(3001, () => console.log('✅ 服务器运行在 http://localhost:3001'));
+app.listen(3001, () => console.log('✅ Server running at http://localhost:3001'));
