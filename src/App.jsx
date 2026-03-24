@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-const API = `http://${window.location.hostname}:3001/api`;
+const API = `/api`;
 const PAGE_SIZE = 8;
 
 const TAG_COLORS = {

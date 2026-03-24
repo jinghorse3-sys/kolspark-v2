@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const API = "http://localhost:3001/api";
+const API = "/api";
 const ADMIN_PASSWORD = "kolspark2024";
 const ALL_TAGS = ["Bán chạy", "Hoa hồng cao", "Mới hôm nay"];
 const ALL_CATS = ["Làm đẹp", "Gia dụng", "Thực phẩm"];

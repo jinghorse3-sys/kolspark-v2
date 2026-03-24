@@ -29,7 +29,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       .resize({ width: 800, height: 800, fit: 'inside', withoutEnlargement: true })
       .webp({ quality: 80 })
       .toFile(outPath);
-    res.json({ url: `http://localhost:3001/uploads/${filename}` });
+    res.json({ url: `/uploads/${filename}` });
   } catch (e) {
     console.error('Image compress error:', e);
     res.status(500).json({ error: e.message });
