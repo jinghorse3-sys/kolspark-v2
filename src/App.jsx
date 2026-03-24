@@ -50,16 +50,7 @@ const TikTokColorLogo = ({ size = 22 }) => (
   </svg>
 );
 
-const MOCK_PRODUCTS = [
-  { id: "m1", name: "Son dưỡng môi Laneige", price: 89000, commission: 26700, commRate: "30%", image: "https://images.unsplash.com/photo-1586495777744-4e6232bf2093?w=400", tags: ["Hoa hồng cao", "Mới hôm nay"], categories: ["Làm đẹp"], weight: 100, sampleLink: "https://affiliate.tiktok.com/api/v1/share/AK6c4QQ1mZn2", createdAt: new Date().toISOString() },
-  { id: "m2", name: "Serum Hyaluronic Acid Pro", price: 149000, commission: 44700, commRate: "30%", image: "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=400", tags: ["Bán chạy", "Hoa hồng cao"], categories: ["Làm đẹp"], weight: 95, sampleLink: "https://affiliate.tiktok.com/api/v1/share/AK6c4QQ1mZn2", createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
-  { id: "m3", name: "Nồi chiên không dầu Philips", price: 399000, commission: 79800, commRate: "20%", image: "https://images.unsplash.com/photo-1648744543548-f6f13d3cf687?w=400", tags: ["Bán chạy"], categories: ["Gia dụng"], weight: 90, sampleLink: "https://affiliate.tiktok.com/api/v1/share/AK6c4QQ1mZn2", createdAt: new Date(Date.now() - 10 * 86400000).toISOString() },
-  { id: "m4", name: "Kem chống nắng SPF50+", price: 79000, commission: 19800, commRate: "25%", image: "https://images.unsplash.com/photo-1556228578-8c89e6adf883?w=400", tags: ["Bán chạy"], categories: ["Làm đẹp"], weight: 88, sampleLink: "https://affiliate.tiktok.com/api/v1/share/AK6c4QQ1mZn2", createdAt: new Date(Date.now() - 5 * 86400000).toISOString() },
-  { id: "m5", name: "Kẹo dẻo Collagen", price: 99000, commission: 29700, commRate: "30%", image: "https://images.unsplash.com/photo-1582058091505-f87a2e55a40f?w=400", tags: ["Hoa hồng cao"], categories: ["Thực phẩm"], weight: 85, sampleLink: "https://affiliate.tiktok.com/api/v1/share/AK6c4QQ1mZn2", createdAt: new Date(Date.now() - 3 * 86400000).toISOString() },
-  { id: "m6", name: "Trà sữa Oolong hộp quà", price: 59000, commission: 16800, commRate: "28%", image: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400", tags: ["Hoa hồng cao"], categories: ["Thực phẩm"], weight: 78, sampleLink: "https://affiliate.tiktok.com/api/v1/share/AK6c4QQ1mZn2", createdAt: new Date(Date.now() - 1 * 86400000).toISOString() },
-  { id: "m7", name: "Nến thơm cao cấp", price: 128000, commission: 38400, commRate: "30%", image: "https://images.unsplash.com/photo-1602607144881-d2982e28cd6b?w=400", tags: ["Hoa hồng cao"], categories: ["Gia dụng"], weight: 70, sampleLink: "https://affiliate.tiktok.com/api/v1/share/AK6c4QQ1mZn2", createdAt: new Date(Date.now() - 8 * 86400000).toISOString() },
-  { id: "m8", name: "Máy phun sương mini", price: 89000, commission: 22300, commRate: "25%", image: "https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=400", tags: ["Bán chạy"], categories: ["Gia dụng"], weight: 65, sampleLink: "https://affiliate.tiktok.com/api/v1/share/AK6c4QQ1mZn2", createdAt: new Date(Date.now() - 6 * 86400000).toISOString() },
-];
+
 
 function SampleModal({ product, onClose }) {
   const [copiedTap, setCopiedTap] = useState(false);
@@ -232,12 +223,10 @@ export default function App() {
     fetch(`${API}/products`).then(r => r.json()).then(data => {
       setBanner(data.banner || DEFAULT_BANNER);
       setLogo(data.logo || "");
-      const fromServer = (data.products || []).filter(p => p.name && p.status !== "offline");
-      const all = fromServer.length > 0 ? fromServer : MOCK_PRODUCTS;
+      const all = (data.products || []).filter(p => p.name && p.status !== "offline");
       setAllProducts(all.sort((a, b) => (b.weight || 0) - (a.weight || 0)));
       setLoading(false);
     }).catch(() => {
-      setAllProducts(MOCK_PRODUCTS);
       setLoading(false);
     });
   }, []);
